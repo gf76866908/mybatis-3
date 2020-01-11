@@ -1,5 +1,5 @@
 /**
- *    Copyright 2009-2019 the original author or authors.
+ *    Copyright 2009-2020 the original author or authors.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -129,8 +129,18 @@ public class XPathParser {
     this.document = document;
   }
 
+  /**
+   * 构造 XPathParser 对象
+   *
+   * @param xml XML 文件地址
+   * @param validation 是否校验 XML
+   * @param variables 变量 Properties 对象
+   * @param entityResolver XML 实体解析器
+   */
   public XPathParser(String xml, boolean validation, Properties variables, EntityResolver entityResolver) {
+    //调用公共构造方法
     commonConstructor(validation, variables, entityResolver);
+    //将xml文件解析成document对象
     this.document = createDocument(new InputSource(new StringReader(xml)));
   }
 
@@ -216,7 +226,9 @@ public class XPathParser {
   }
 
   public List<XNode> evalNodes(Object root, String expression) {
+    //封装成Xnode'数组
     List<XNode> xnodes = new ArrayList<>();
+    //获得node数组
     NodeList nodes = (NodeList) evaluate(expression, root, XPathConstants.NODESET);
     for (int i = 0; i < nodes.getLength(); i++) {
       xnodes.add(new XNode(this, nodes.item(i), variables));
@@ -225,17 +237,27 @@ public class XPathParser {
   }
 
   public XNode evalNode(String expression) {
+    //Xnode
     return evalNode(document, expression);
   }
 
   public XNode evalNode(Object root, String expression) {
+    //获得Node对象
     Node node = (Node) evaluate(expression, root, XPathConstants.NODE);
     if (node == null) {
       return null;
     }
+    //封装成Xnode对象
     return new XNode(this, node, variables);
   }
 
+  /**
+   * 指定元素节点的值
+   * @param expression 表达式
+   * @param root 指定节点
+   * @param returnType 返回类型
+   * @return
+   */
   private Object evaluate(String expression, Object root, QName returnType) {
     try {
       return xpath.evaluate(expression, root, returnType);
@@ -244,10 +266,17 @@ public class XPathParser {
     }
   }
 
+  /**
+   * 创建document对象
+   * @param inputSource
+   * @return
+   */
   private Document createDocument(InputSource inputSource) {
     // important: this must only be called AFTER common constructor
     try {
+      //创建DocumentBuilderFactory对象
       DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+      //设置是否验证xml
       factory.setValidating(validation);
 
       factory.setNamespaceAware(false);
@@ -257,7 +286,9 @@ public class XPathParser {
       factory.setExpandEntityReferences(true);
 
       DocumentBuilder builder = factory.newDocumentBuilder();
+      //设置实体解析类
       builder.setEntityResolver(entityResolver);
+      //空实现
       builder.setErrorHandler(new ErrorHandler() {
         @Override
         public void error(SAXParseException exception) throws SAXException {
@@ -273,6 +304,7 @@ public class XPathParser {
         public void warning(SAXParseException exception) throws SAXException {
         }
       });
+      //解析xml
       return builder.parse(inputSource);
     } catch (Exception e) {
       throw new BuilderException("Error creating document instance.  Cause: " + e, e);
