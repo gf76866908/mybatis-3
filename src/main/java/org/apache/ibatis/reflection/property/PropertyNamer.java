@@ -37,6 +37,7 @@ public final class PropertyNamer {
       throw new ReflectionException("Error parsing property name '" + name + "'.  Didn't start with 'is', 'get' or 'set'.");
     }
 
+    //首字母大写的话变成小写
     if (name.length() == 1 || (name.length() > 1 && !Character.isUpperCase(name.charAt(1)))) {
       name = name.substring(0, 1).toLowerCase(Locale.ENGLISH) + name.substring(1);
     }

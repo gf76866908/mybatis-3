@@ -51,10 +51,21 @@ import org.apache.ibatis.type.JdbcType;
  * @author Kazuki Shimizu
  */
 public class XMLConfigBuilder extends BaseBuilder {
-
+  /**
+   * 是否解析过
+   */
   private boolean parsed;
+  /**
+   * 用于解析配置文件的对象
+   */
   private final XPathParser parser;
+  /**
+   * 配置文件中表示enviroment 的名称
+   */
   private String environment;
+  /**
+   * 负责和创建Rlfector对象
+   */
   private final ReflectorFactory localReflectorFactory = new DefaultReflectorFactory();
 
   public XMLConfigBuilder(Reader reader) {
@@ -99,30 +110,45 @@ public class XMLConfigBuilder extends BaseBuilder {
       throw new BuilderException("Each XMLConfigBuilder can only be used once.");
     }
     parsed = true;
+    //解析配置xml的配置文件
     parseConfiguration(parser.evalNode("/configuration"));
     return configuration;
   }
 
   /**
    * 解析configuration下面的xml信息
-   * @param root
+   * 对配置文件的每个节点都进行相关解析
+   * configuration节点为根节点其他之前为子节点
+   * @param root 根节点
    */
   private void parseConfiguration(XNode root) {
     try {
       //issue #117 read properties first
+      //解析properties配置
       propertiesElement(root.evalNode("properties"));
+      //解析setting配置并解析成Properties对象
       Properties settings = settingsAsProperties(root.evalNode("settings"));
+      //加载vfs
       loadCustomVfs(settings);
       loadCustomLogImpl(settings);
+      //解析typeAliases
       typeAliasesElement(root.evalNode("typeAliases"));
+      //解析plugin配置
       pluginElement(root.evalNode("plugins"));
+      //解析ObjectFactory
       objectFactoryElement(root.evalNode("objectFactory"));
+      //解析objectWrapperFactory
       objectWrapperFactoryElement(root.evalNode("objectWrapperFactory"));
+      //解析reflectorFactory
       reflectorFactoryElement(root.evalNode("reflectorFactory"));
+      //setting信息设置到configuration
       settingsElement(settings);
       // read it after objectFactory and objectWrapperFactory issue #631
+      //解析enviroments
       environmentsElement(root.evalNode("environments"));
+      //解析databaseIdProvider
       databaseIdProviderElement(root.evalNode("databaseIdProvider"));
+      //解析typeHandlers
       typeHandlerElement(root.evalNode("typeHandlers"));
       mapperElement(root.evalNode("mappers"));
     } catch (Exception e) {
@@ -134,10 +160,13 @@ public class XMLConfigBuilder extends BaseBuilder {
     if (context == null) {
       return new Properties();
     }
+    //获取setting节点中的内容
     Properties props = context.getChildrenAsProperties();
     // Check that all settings are known to the configuration class
+    //创建configuration的元数据对象
     MetaClass metaConfig = MetaClass.forClass(Configuration.class, localReflectorFactory);
     for (Object key : props.keySet()) {
+      //检测configuration中是否存在相关属性，不存在抛出异常
       if (!metaConfig.hasSetter(String.valueOf(key))) {
         throw new BuilderException("The setting " + key + " is not known.  Make sure you spelled it correctly (case sensitive).");
       }
@@ -164,17 +193,25 @@ public class XMLConfigBuilder extends BaseBuilder {
     configuration.setLogImpl(logImpl);
   }
 
+  /**
+   * 解析xml的别名配置
+   * @param parent
+   */
   private void typeAliasesElement(XNode parent) {
     if (parent != null) {
       for (XNode child : parent.getChildren()) {
+        //是否进行了包的映射关系
         if ("package".equals(child.getName())) {
           String typeAliasPackage = child.getStringAttribute("name");
           configuration.getTypeAliasRegistry().registerAliases(typeAliasPackage);
         } else {
+          //获取单独映射的类的alias和type
           String alias = child.getStringAttribute("alias");
           String type = child.getStringAttribute("type");
           try {
+            //加载type的对应类型
             Class<?> clazz = Resources.classForName(type);
+            //注册别名到类型的映射
             if (alias == null) {
               typeAliasRegistry.registerAlias(clazz);
             } else {
@@ -192,9 +229,13 @@ public class XMLConfigBuilder extends BaseBuilder {
     if (parent != null) {
       for (XNode child : parent.getChildren()) {
         String interceptor = child.getStringAttribute("interceptor");
+        //获取配置信息
         Properties properties = child.getChildrenAsProperties();
+        //解析拦截器的类型，并创建拦截器
         Interceptor interceptorInstance = (Interceptor) resolveClass(interceptor).newInstance();
+        //设置属性
         interceptorInstance.setProperties(properties);
+        //添加到configuration
         configuration.addInterceptor(interceptorInstance);
       }
     }
@@ -228,26 +269,41 @@ public class XMLConfigBuilder extends BaseBuilder {
 
   private void propertiesElement(XNode context) throws Exception {
     if (context != null) {
+      //将子节点的name和value属性set进properties
       Properties defaults = context.getChildrenAsProperties();
+      //获取properties上的resource属性值
       String resource = context.getStringAttribute("resource");
+      //获取url属性值
       String url = context.getStringAttribute("url");
+      //不能同时存在url和resource 否则报错
       if (resource != null && url != null) {
         throw new BuilderException("The properties element cannot specify both a URL and a resource based property file reference.  Please specify one or the other.");
       }
+      //将解析出来的properties文件set到properties对象中
       if (resource != null) {
+        //加载文件系统中的文件
         defaults.putAll(Resources.getResourceAsProperties(resource));
       } else if (url != null) {
+        //通过url加载并解析文件
         defaults.putAll(Resources.getUrlAsProperties(url));
       }
+      //将configuration对象中已配置的properties属性与刚刚解析的融合
+      //configuration这个对象会装载解析mybatis配置文件和所以节点元素
       Properties vars = configuration.getVariables();
       if (vars != null) {
         defaults.putAll(vars);
       }
+      //吧所有配置的properties对象set到解析器
       parser.setVariables(defaults);
+      //set到configuration对象中
       configuration.setVariables(defaults);
     }
   }
 
+  /**
+   * mybatis的全局配置
+   * @param props
+   */
   private void settingsElement(Properties props) {
     configuration.setAutoMappingBehavior(AutoMappingBehavior.valueOf(props.getProperty("autoMappingBehavior", "PARTIAL")));
     configuration.setAutoMappingUnknownColumnBehavior(AutoMappingUnknownColumnBehavior.valueOf(props.getProperty("autoMappingUnknownColumnBehavior", "NONE")));
@@ -279,9 +335,11 @@ public class XMLConfigBuilder extends BaseBuilder {
   private void environmentsElement(XNode context) throws Exception {
     if (context != null) {
       if (environment == null) {
+        //获取default属性
         environment = context.getStringAttribute("default");
       }
       for (XNode child : context.getChildren()) {
+        //获取id属性
         String id = child.getStringAttribute("id");
         if (isSpecifiedEnvironment(id)) {
           TransactionFactory txFactory = transactionManagerElement(child.evalNode("transactionManager"));

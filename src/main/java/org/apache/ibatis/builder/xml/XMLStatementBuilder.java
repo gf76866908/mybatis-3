@@ -34,6 +34,7 @@ import org.apache.ibatis.scripting.LanguageDriver;
 import org.apache.ibatis.session.Configuration;
 
 /**
+ * 解析xml中的select|insert|update|delete
  * @author Clinton Begin
  */
 public class XMLStatementBuilder extends BaseBuilder {
@@ -60,7 +61,7 @@ public class XMLStatementBuilder extends BaseBuilder {
     if (!databaseIdMatchesCurrent(id, databaseId, this.requiredDatabaseId)) {
       return;
     }
-
+    //根据节点名称设置sqlCommandType的类型
     String nodeName = context.getNode().getNodeName();
     SqlCommandType sqlCommandType = SqlCommandType.valueOf(nodeName.toUpperCase(Locale.ENGLISH));
     boolean isSelect = sqlCommandType == SqlCommandType.SELECT;
@@ -68,7 +69,7 @@ public class XMLStatementBuilder extends BaseBuilder {
     boolean useCache = context.getBooleanAttribute("useCache", isSelect);
     boolean resultOrdered = context.getBooleanAttribute("resultOrdered", false);
 
-    // Include Fragments before parsing
+    // Include Fragments before parsing，解析sql语句之前，先处理include节点
     XMLIncludeTransformer includeParser = new XMLIncludeTransformer(configuration, builderAssistant);
     includeParser.applyIncludes(context.getNode());
 
@@ -78,7 +79,7 @@ public class XMLStatementBuilder extends BaseBuilder {
     String lang = context.getStringAttribute("lang");
     LanguageDriver langDriver = getLanguageDriver(lang);
 
-    // Parse selectKey after includes and remove them.
+    // Parse selectKey after includes and remove them.处理selectKey
     processSelectKeyNodes(id, parameterTypeClass, langDriver);
 
     // Parse the SQL (pre: <selectKey> and <include> were parsed and removed)
@@ -92,7 +93,7 @@ public class XMLStatementBuilder extends BaseBuilder {
           configuration.isUseGeneratedKeys() && SqlCommandType.INSERT.equals(sqlCommandType))
           ? Jdbc3KeyGenerator.INSTANCE : NoKeyGenerator.INSTANCE;
     }
-
+    //完成节点的解析(核心)
     SqlSource sqlSource = langDriver.createSqlSource(configuration, context, parameterTypeClass);
     StatementType statementType = StatementType.valueOf(context.getStringAttribute("statementType", StatementType.PREPARED.toString()));
     Integer fetchSize = context.getIntAttribute("fetchSize");

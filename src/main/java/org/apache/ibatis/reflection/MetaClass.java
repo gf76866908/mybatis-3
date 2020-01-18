@@ -132,10 +132,14 @@ public class MetaClass {
   }
 
   public boolean hasSetter(String name) {
+    //属性分词器
     PropertyTokenizer prop = new PropertyTokenizer(name);
     if (prop.hasNext()) {
+      //调用reflector的hasSetter方法
       if (reflector.hasSetter(prop.getName())) {
+        //为属性创造metaClass
         MetaClass metaProp = metaClassForProperty(prop.getName());
+
         return metaProp.hasSetter(prop.getChildren());
       } else {
         return false;

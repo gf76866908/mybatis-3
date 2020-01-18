@@ -82,6 +82,10 @@ public class DefaultSqlSessionFactory implements SqlSessionFactory {
     return openSessionFromConnection(execType, connection);
   }
 
+  /**
+   * 通过数据源获取数据库链接，创建Exceutor以及DefaultSqlSession对象
+   * @return
+   */
   @Override
   public Configuration getConfiguration() {
     return configuration;
@@ -103,6 +107,12 @@ public class DefaultSqlSessionFactory implements SqlSessionFactory {
     }
   }
 
+  /**
+   * 用户提供数据库链接对象，使用该数据库链接对象创建Executor和DefaultSqlSession对象
+   * @param execType
+   * @param connection
+   * @return
+   */
   private SqlSession openSessionFromConnection(ExecutorType execType, Connection connection) {
     try {
       boolean autoCommit;
